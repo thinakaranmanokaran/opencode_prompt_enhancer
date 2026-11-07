@@ -1,0 +1,33 @@
+{
+  "name": "opencode-prompt-enhancer",
+  "version": "0.1.0",
+  "description": "OpenCode TUI plugin that enhances the user's prompt through a /enhance modal.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tui": "./src/tui.tsx"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode/plugin": "2.2.5"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.8.1",
+    "@opentui/solid": ">=0.8.1",
+    "solid-js": ">=1.9.0"
+  },
+  "devDependencies": {
+    "@opentui/core": "0.8.1",
+    "@opentui/solid": "0.8.1",
+    "@types/node": "^24.12.2",
+    "solid-js": "^1.9.17",
+    "typescript": "5.9.3"
+  }
+}
