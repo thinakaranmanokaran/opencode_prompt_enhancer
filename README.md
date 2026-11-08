@@ -157,13 +157,16 @@ Run the local plugin from this directory with `opencode` and use `/reload` after
 npm install
 npm run typecheck
 npm test
+npm run build
 ```
 
-The checked-in `opencode.jsonc` loads this directory as a local plugin and includes sample persona options.
+The plugin is compiled from `src/` to `dist/` with Babel + Solid (universal generate) before publishing. The checked-in `opencode.jsonc` loads `./dist` as a local plugin and includes sample persona options. Run `npm run build` after editing `src/` before `/reload`.
+
+> Publishing raw `.tsx` from `node_modules` does not work: the Solid transform skips `node_modules`, so JSX falls back to React (`Cannot find package 'react'`). Always publish compiled `dist/*.js`, never raw TSX.
 
 ## Publishing
 
-`prepublishOnly` runs the typecheck and tests before every publish. The published tarball contains `src`, `README.md`, `LICENSE`, and `package.json`.
+`prepublishOnly` runs the typecheck, tests, and build before every publish. The published tarball contains `dist`, `README.md`, `LICENSE`, and `package.json`.
 
 ```bash
 npm login
