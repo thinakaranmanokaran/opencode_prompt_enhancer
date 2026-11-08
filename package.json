@@ -1,9 +1,26 @@
 {
   "name": "opencode-prompt-enhancer",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "OpenCode TUI plugin that enhances the user's prompt through a /enhance modal.",
   "type": "module",
   "license": "MIT",
+  "author": "Thinakaran Manokaran",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thinakaranmanokaran/opencode_prompt_enhancer.git"
+  },
+  "homepage": "https://github.com/thinakaranmanokaran/opencode_prompt_enhancer#readme",
+  "bugs": {
+    "url": "https://github.com/thinakaranmanokaran/opencode_prompt_enhancer/issues"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tui",
+    "prompt",
+    "prompt-engineering",
+    "ai"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./tui": "./src/tui.tsx"
@@ -13,7 +30,9 @@
     "README.md"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test",
+    "prepublishOnly": "npm run typecheck && npm test"
   },
   "dependencies": {
     "@opencode/plugin": "2.2.5"

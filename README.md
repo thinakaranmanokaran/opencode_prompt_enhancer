@@ -2,6 +2,24 @@
 
 A TUI plugin for OpenCode that offers `/enhance`. It rewrites a rough draft into a clearer, more specific prompt and presents the result in a `/btw`-style modal.
 
+## Requirements
+
+- OpenCode v2 (tested with v2.2.5).
+- A configured provider and model. Enhancement uses the currently selected prompt model unless the `model` option is set. The draft is sent to that provider through OpenCode when you run `/enhance`.
+
+## Install
+
+Add the plugin to your global or project `opencode.jsonc`:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-prompt-enhancer"]
+}
+```
+
+Pin a release with `"opencode-prompt-enhancer@0.1.1"`. OpenCode installs the package and loads its TUI part automatically. If the TUI connects to a remote server and you want this plugin to keep running locally, add it to `~/.config/opencode/cli.json` instead. Run `/reload` if the command does not appear.
+
 ## Usage
 
 ```text
@@ -28,9 +46,9 @@ The command palette also contains **Show prompt enhancer config**, which display
 The plugin merges plugin options field by field:
 
 1. Built-in defaults
-2. User config: `C:\Users\<user>\.config\opencode\opencode.jsonc`
-3. Project config: `<project>\opencode.jsonc`
-4. Project config: `<project>\.opencode\opencode.jsonc`
+2. User config: `~/.config/opencode/opencode.jsonc` (`%USERPROFILE%\.config\opencode\opencode.jsonc` on Windows)
+3. Project config: `<project>/opencode.jsonc`
+4. Project config: `<project>/.opencode/opencode.jsonc`
 
 The plugin must be listed in the config where you want options to take effect, using the same package specifier (`opencode-prompt-enhancer`, or the same local path for development).
 
@@ -138,6 +156,23 @@ Run the local plugin from this directory with `opencode` and use `/reload` after
 ```bash
 npm install
 npm run typecheck
+npm test
 ```
 
-The checked-in `opencode.json` loads this directory as a local plugin and includes sample persona options.
+The checked-in `opencode.jsonc` loads this directory as a local plugin and includes sample persona options.
+
+## Publishing
+
+`prepublishOnly` runs the typecheck and tests before every publish. The published tarball contains `src`, `README.md`, `LICENSE`, and `package.json`.
+
+```bash
+npm login
+npm run typecheck
+npm test
+npm pack --dry-run
+npm publish --access public
+```
+
+## License
+
+MIT

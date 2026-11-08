@@ -26,10 +26,15 @@ function titleCase(value: string): string {
     .join(" ")
 }
 
+function experienceLabel(value: string): string {
+  const trimmed = value.trim()
+  return /^\d+(?:\.\d+)?$/.test(trimmed) ? `${trimmed} years` : trimmed
+}
+
 function persona(options: EnhancerOptions): string {
   const role = options.role ?? "experienced software engineer"
   const experience = options.experience
-    ? ` with ${options.experience} of experience`
+    ? ` with ${experienceLabel(options.experience)} of experience`
     : ""
   let text = `You are ${titleCase(role)}${experience}.`
   if (options.specialties?.length) {

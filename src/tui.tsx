@@ -319,7 +319,7 @@ export default Plugin.define({
   setup(context) {
     const [pending, setPending] = createSignal(0)
 
-    context.ui.slot({
+    const disposeStatusSlot = context.ui.slot({
       append: "prompt.footer.status",
       render: () => (
         <Show when={pending() > 0}>
@@ -334,7 +334,7 @@ export default Plugin.define({
       draft: string,
       options: EnhancerOptions,
       editor: EditorLike | undefined,
-      restoreOnCancel: boolean,
+      restoreText: string | undefined,
     ) {
       setPending((count) => count + 1)
       let enhanced = ""
@@ -349,7 +349,7 @@ export default Plugin.define({
         enhanced = cleanEnhancedPrompt(result.text)
         if (!enhanced) throw new Error("The model returned an empty enhancement.")
       } catch (error) {
-        if (restoreOnCancel) setEditorText(editor, draft)
+        if (restoreText) setEditorText(editor, restoreText)
         showToast(
           context,
           `Could not enhance prompt: ${error instanceof Error ? error.message : String(error)}`,
@@ -396,7 +396,7 @@ export default Plugin.define({
         retry: () => {
           dialogState.retrying = true
           context.ui.dialog.clear()
-          void enhanceDraft(draft, options, editor, restoreOnCancel)
+          void enhanceDraft(draft, options, editor, restoreText)
         },
       }
 
@@ -406,7 +406,7 @@ export default Plugin.define({
         ),
         () => {
           if (dialogState.finished || dialogState.retrying) return
-          if (restoreOnCancel) setEditorText(editor, draft)
+          if (restoreText) setEditorText(editor, restoreText)
         },
       )
       context.ui.dialog.set({ size: "large", centered: true })
@@ -419,7 +419,8 @@ export default Plugin.define({
         showToast(context, warning, "warning")
       }
 
-      let draft = rawInput?.trim() ?? ""
+      const slashInput = rawInput?.trim() ?? ""
+      let draft = slashInput
       if (!draft) {
         draft =
           (await context.ui.dialog.prompt({
@@ -429,7 +430,8 @@ export default Plugin.define({
       }
       if (!draft) return
 
-      await enhanceDraft(draft, loaded.options, editor, Boolean(rawInput?.trim()))
+      const restoreText = slashInput ? `/enhance ${draft}` : undefined
+      await enhanceDraft(draft, loaded.options, editor, restoreText)
     }
 
     async function showResolvedConfig() {
@@ -476,5 +478,7 @@ export default Plugin.define({
         },
       ],
     }))
+
+    return () => disposeStatusSlot()
   },
 })
