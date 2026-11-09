@@ -6,6 +6,7 @@ A TUI plugin for OpenCode that offers `/enhance`. It rewrites a rough draft into
 
 - OpenCode v2 (tested with v2.2.5).
 - A configured provider and model. Enhancement uses the currently selected prompt model unless the `model` option is set. The draft is sent to that provider through OpenCode when you run `/enhance`.
+- If the selected model is a free OpenCode model (for example `opencode/iceman-free`) and it reports `Free usage limit reached`, `/enhance` automatically retries once with the cheapest enabled paid model (for example `openai/gpt-6-luna` when an OpenAI key is configured). You will see a `Free model limit reached — enhanced with <model> instead.` toast. If no paid model is available, the error explains how to switch models or pin the enhancer model.
 
 ## Install
 
@@ -129,7 +130,7 @@ The plugin must be listed in the config where you want options to take effect, u
 | `rules` | string[] | Enhancement rules. Replaces the default rules when set. |
 | `examples` | array | Few-shot examples using `{ "input": "...", "output": "..." }` or strings. |
 | `extraInstructions` | string | Appended to the generated enhancement prompt. |
-| `model` | `{ providerID, id }` | Model used for enhancement. Falls back to the selected prompt model, then the server default. |
+| `model` | `{ providerID, id }` | Model used for enhancement. Falls back to the selected prompt model, then the server default. If the selected model is a free model that hits its free usage limit, `/enhance` retries with the cheapest enabled paid model. Set this to a paid model to avoid the free quota entirely. |
 
 Custom templates support these placeholders:
 
@@ -148,6 +149,30 @@ Custom templates support these placeholders:
 ```
 
 If a custom template does not contain `{{draft}}`, the plugin appends the draft after the template.
+
+### Free-model usage limit
+
+Free OpenCode models (for example `opencode/iceman-free`, `crouton-alpha-free`, `beam-free`) stop working once their free usage limit is reached. If your composer is on a free model, `/enhance` uses that model by default and will hit the same limit.
+
+- `/enhance` now detects the `Free usage limit reached` error and automatically retries with the cheapest enabled paid model so it keeps working without changing your composer model. You will see a toast naming the fallback model.
+- To avoid the free quota entirely, pin the enhancer to a paid model (for example the OpenAI model you already have a key for):
+
+  ```jsonc
+  {
+    "plugins": [
+      {
+        "package": "opencode-prompt-enhancer",
+        "options": { "model": "openai/gpt-6-luna" }
+      }
+    ]
+  }
+  ```
+
+  The `model` option also accepts `{ "providerID": "openai", "id": "gpt-6-luna" }`. Run `/reload` after editing.
+- Alternatively, run `/models` and switch the composer itself to a paid model such as `openai/gpt-6-luna`.
+- If every attempt reports the free limit, `/enhance` shows an error naming the free model that was tried plus these fixes. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go
+
+To verify this machine's free-quota state, load the plugin and run **Show prompt enhancer config** from the command palette — it prints the merged options and warnings. The server log `~/.local/share/opencode/log/opencode.log` records the failing `/generate` request.
 
 ## Development
 

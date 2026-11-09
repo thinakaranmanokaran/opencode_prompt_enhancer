@@ -1,0 +1,7 @@
+opencode plugin remove opencode-prompt-enhancer
+rm -rf ~/.cache/opencode/npm/opencode-prompt-enhancer@latest ~/.cache/opencode/npm/opencode-prompt-enhancer@1.0.1 ~/.cache/opencode/npm/opencode-prompt-enhancer@1.0.1
+opencode service restart
+opencode plugin add opencode-prompt-enhancer@1.0.2
+sleep 60
+ls ~/.cache/opencode/npm/ | grep prompt-enhancer
+opencode plugin list

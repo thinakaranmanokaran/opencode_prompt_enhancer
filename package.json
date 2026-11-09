@@ -1,6 +1,6 @@
 {
   "name": "opencode-prompt-enhancer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "OpenCode TUI plugin that enhances the user's prompt through a /enhance modal.",
   "type": "module",
   "license": "MIT",

@@ -1,4 +1,4 @@
-import type { EnhancerOptions } from "./config.js"
+import type { EnhancerOptions, ModelRef } from "./config.js"
 
 const DEFAULT_RULES = [
   "Preserve the user's intent, language, and technical meaning.",
@@ -148,4 +148,193 @@ export function cleanEnhancedPrompt(value: string): string {
   }
 
   return text.trim()
+}
+
+export type ModelInfoLike = {
+  providerID?: string
+  id?: string
+  modelID?: string
+  name?: string
+  type?: string
+  enabled?: boolean
+  status?: string
+  cost?: unknown
+}
+
+export const FREE_LIMIT_HINTS = [
+  "free usage limit reached",
+  "free usage limit",
+  "free model",
+  "usage limit reached",
+  "free quota",
+  "free models work in opencode",
+  "subscribe to opencode go",
+] as const
+
+export function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === "string") return error
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === "string" && message.trim()) return message
+    try {
+      const serialized = JSON.stringify(error)
+      if (serialized && serialized !== "{}") return serialized
+    } catch {
+      // Ignore serialization failures and fall back to String().
+    }
+  }
+  return String(error)
+}
+
+export function isFreeLimitError(error: unknown): boolean {
+  const message = extractErrorMessage(error).toLowerCase()
+  if (!message) return false
+  if (FREE_LIMIT_HINTS.some((hint) => message.includes(hint))) return true
+  return (
+    message.includes("rate_limit") &&
+    (message.includes("free") || message.includes("opencode") || message.includes("usage"))
+  )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+export function getInputCost(info: ModelInfoLike): number | undefined {
+  const raw = info.cost
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw
+  if (Array.isArray(raw)) {
+    for (const entry of raw) {
+      if (typeof entry === "number" && Number.isFinite(entry)) return entry
+      if (isRecord(entry)) {
+        for (const key of ["input", "inputPrice", "input_price"]) {
+          const value = entry[key]
+          if (typeof value === "number" && Number.isFinite(value)) return value
+        }
+      }
+    }
+    return undefined
+  }
+  if (isRecord(raw)) {
+    for (const key of ["input", "inputPrice", "input_price"]) {
+      const value = raw[key]
+      if (typeof value === "number" && Number.isFinite(value)) return value
+    }
+  }
+  return undefined
+}
+
+function modelIdOf(info: ModelInfoLike | ModelRef): string {
+  if ("modelID" in info && typeof info.modelID === "string" && info.modelID) return info.modelID
+  if ("id" in info && typeof info.id === "string") return info.id
+  return ""
+}
+
+export function isFreeModel(info: ModelInfoLike | ModelRef): boolean {
+  const raw = info as ModelInfoLike
+  if (raw.enabled === false) return false
+  if (raw.status === "deprecated") return false
+  const id = modelIdOf(info).toLowerCase()
+  const providerID = (raw.providerID ?? "").toLowerCase()
+  const cost = getInputCost(raw)
+  if (typeof cost === "number") return cost === 0
+  if (id.endsWith("-free")) return true
+  if (
+    id.includes("free") &&
+    (providerID === "opencode" || providerID === "opencode-go" || !providerID)
+  ) {
+    return true
+  }
+  return false
+}
+
+export function sameModel(left: ModelRef | undefined, right: ModelRef | undefined): boolean {
+  if (!left || !right) return false
+  return left.providerID === right.providerID && left.id === right.id
+}
+
+export function modelLabel(model: ModelRef | undefined): string {
+  if (!model) return "the default model"
+  return `${model.providerID}/${model.id}`
+}
+
+export function pickPaidFallbacks(
+  models: ModelInfoLike[],
+  exclude: Array<ModelRef | undefined> = [],
+  limit = 2,
+): ModelRef[] {
+  const excluded = new Set(
+    exclude.filter((entry): entry is ModelRef => entry !== undefined).map(modelLabel),
+  )
+  const candidates = models
+    .filter((model) => {
+      if (!model.providerID) return false
+      if (!modelIdOf(model)) return false
+      if (model.enabled === false) return false
+      if (model.status === "deprecated") return false
+      if (model.type && model.type !== "chat") return false
+      if (isFreeModel(model)) return false
+      return true
+    })
+    .map((model) => {
+      const providerID = model.providerID!
+      const id = modelIdOf(model)
+      return {
+        providerID,
+        id,
+        cost: getInputCost(model) ?? Number.POSITIVE_INFINITY,
+        label: `${providerID}/${id}`,
+      }
+    })
+    .sort((a, b) => {
+      if (a.cost !== b.cost) return a.cost - b.cost
+      return a.label.localeCompare(b.label)
+    })
+    .filter((entry) => !excluded.has(entry.label))
+  return candidates.slice(0, Math.max(0, limit)).map(({ providerID, id }) => ({ providerID, id }))
+}
+
+export function pickPaidFallback(
+  models: ModelInfoLike[],
+  exclude: Array<ModelRef | undefined> = [],
+): ModelRef | undefined {
+  return pickPaidFallbacks(models, exclude, 1)[0]
+}
+
+export function buildCandidateModels(
+  configured: ModelRef | undefined,
+  selected: ModelRef | undefined,
+  fallback: ModelRef | undefined,
+): ModelRef[] {
+  const candidates: ModelRef[] = []
+  for (const candidate of [configured, selected, fallback]) {
+    if (!candidate) continue
+    if (!candidates.some((existing) => sameModel(existing, candidate))) {
+      candidates.push(candidate)
+    }
+  }
+  return candidates
+}
+
+export const STATIC_PAID_FALLBACKS: ModelRef[] = [
+  { providerID: "openai", id: "gpt-6-luna" },
+  { providerID: "opencode", id: "gpt-6-luna" },
+  { providerID: "opencode", id: "claude-haiku-5-5" },
+]
+
+export function formatEnhanceError(error: unknown, model: ModelRef | undefined): string {
+  const message = extractErrorMessage(error)
+  if (isFreeLimitError(error)) {
+    const attempted = modelLabel(model)
+    return [
+      `Could not enhance prompt: free model "${attempted}" hit its free usage limit.`,
+      `Your composer is currently on a free model. Switch it with /models to a paid model (for example openai/gpt-6-luna or opencode/gpt-6-luna), or pin the enhancer by setting options.model to "openai/gpt-6-luna" in opencode.jsonc.`,
+      `Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go`,
+      message && message !== `Free usage limit reached` ? `(${message})` : "",
+    ]
+      .filter(Boolean)
+      .join(" ")
+  }
+  return `Could not enhance prompt: ${message}`
 }

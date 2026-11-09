@@ -4,8 +4,17 @@ import { SyntaxStyle, TextAttributes } from "@opentui/core"
 import type { RGBA, ScrollBoxRenderable } from "@opentui/core"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js"
-import { buildEnhancementPrompt, cleanEnhancedPrompt } from "./enhance.js"
-import { loadEnhancerOptions, type EnhancerOptions } from "./config.js"
+import {
+  buildEnhancementPrompt,
+  cleanEnhancedPrompt,
+  formatEnhanceError,
+  isFreeLimitError,
+  modelLabel,
+  pickPaidFallbacks,
+  STATIC_PAID_FALLBACKS,
+  type ModelInfoLike,
+} from "./enhance.js"
+import { loadEnhancerOptions, type EnhancerOptions, type ModelRef } from "./config.js"
 
 type EditorLike = {
   isDestroyed: boolean
@@ -52,6 +61,27 @@ function setEditorText(editor: EditorLike | undefined, text: string): boolean {
 
 function showToast(context: Context, message: string, variant: "info" | "success" | "warning" | "error" = "info") {
   context.ui.toast.show({ message, variant })
+}
+
+function locationDirectory(context: Context): string | undefined {
+  const location = context.location as { directory?: string } | undefined
+  return typeof location?.directory === "string" && location.directory ? location.directory : undefined
+}
+
+async function listAvailableModels(context: Context): Promise<ModelInfoLike[]> {
+  try {
+    const directory = locationDirectory(context)
+    const result: unknown = await context.client.model.list(
+      directory ? { location: { directory } } : {},
+    )
+    const data =
+      result && typeof result === "object" && "data" in result
+        ? (result as { data?: unknown }).data
+        : result
+    return Array.isArray(data) ? (data as ModelInfoLike[]) : []
+  } catch {
+    return []
+  }
 }
 
 function generateEnhanceSyntax(theme: Context["theme"], owner: Context["renderer"]["nativeScene"]) {
@@ -330,6 +360,13 @@ export default Plugin.define({
       ),
     })
 
+    async function generateText(prompt: string, model: ModelRef | undefined) {
+      return context.client.experimental.generate.text({
+        prompt,
+        model: model ? { providerID: model.providerID, id: model.id } : undefined,
+      })
+    }
+
     async function enhanceDraft(
       draft: string,
       options: EnhancerOptions,
@@ -338,23 +375,63 @@ export default Plugin.define({
     ) {
       setPending((count) => count + 1)
       let enhanced = ""
+      let usedModel: ModelRef | undefined
       try {
+        const prompt = buildEnhancementPrompt(options, draft)
         const selected = context.ui.model.current()
-        const model = options.model ??
-          (selected ? { providerID: selected.providerID, id: selected.modelID } : undefined)
-        const result = await context.client.experimental.generate.text({
-          prompt: buildEnhancementPrompt(options, draft),
-          model,
-        })
-        enhanced = cleanEnhancedPrompt(result.text)
-        if (!enhanced) throw new Error("The model returned an empty enhancement.")
+        const selectedRef: ModelRef | undefined = selected
+          ? { providerID: selected.providerID, id: selected.modelID }
+          : undefined
+        const primary: ModelRef | undefined = options.model ?? selectedRef
+        try {
+          const result = await generateText(prompt, primary)
+          enhanced = cleanEnhancedPrompt(result.text)
+          usedModel = primary
+          if (!enhanced) throw new Error("The model returned an empty enhancement.")
+        } catch (error) {
+          if (!isFreeLimitError(error)) throw error
+          const available = await listAvailableModels(context)
+          const fallbacks = pickPaidFallbacks(available, [primary], 2)
+          const candidates =
+            fallbacks.length > 0
+              ? fallbacks
+              : STATIC_PAID_FALLBACKS.filter(
+                  (fallback) =>
+                    !primary || fallback.providerID !== primary.providerID || fallback.id !== primary.id,
+                )
+          // If the free model hit its limit, retry with a paid model so /enhance
+          // keeps working instead of surfacing the free-quota error.
+          let lastFreeError: unknown = error
+          for (const fallback of candidates) {
+            try {
+              const result = await generateText(prompt, fallback)
+              const candidate = cleanEnhancedPrompt(result.text)
+              if (!candidate) continue
+              enhanced = candidate
+              usedModel = fallback
+              lastFreeError = undefined
+              break
+            } catch (fallbackError) {
+              if (isFreeLimitError(fallbackError)) {
+                lastFreeError = fallbackError
+                continue
+              }
+              throw fallbackError
+            }
+          }
+          if (!enhanced) throw lastFreeError
+          showToast(
+            context,
+            `Free model limit reached — enhanced with ${modelLabel(usedModel)} instead.`,
+            "warning",
+          )
+        }
       } catch (error) {
         if (restoreText) setEditorText(editor, restoreText)
-        showToast(
-          context,
-          `Could not enhance prompt: ${error instanceof Error ? error.message : String(error)}`,
-          "error",
-        )
+        const selected = context.ui.model.current()
+        const attempted: ModelRef | undefined =
+          options.model ?? (selected ? { providerID: selected.providerID, id: selected.modelID } : undefined)
+        showToast(context, formatEnhanceError(error, attempted), "error")
         return
       } finally {
         setPending((count) => Math.max(0, count - 1))
