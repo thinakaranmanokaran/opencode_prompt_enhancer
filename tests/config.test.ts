@@ -14,6 +14,7 @@ test("matches package names, versions, and local checkout paths", () => {
   assert.equal(matchesPluginPackage("."), true)
   assert.equal(matchesPluginPackage("D:/GitHub/Open Source/opencode_prompt_enhancer"), true)
   assert.equal(matchesPluginPackage("D:\\GitHub\\Open Source\\opencode_prompt_enhancer"), true)
+  assert.equal(matchesPluginPackage("E:/Thinakaran/Development/Opencode Prompt Enhancer Plugin"), true)
   assert.equal(matchesPluginPackage("C:/Users/dheen"), false)
   assert.equal(matchesPluginPackage("another-plugin"), false)
 })

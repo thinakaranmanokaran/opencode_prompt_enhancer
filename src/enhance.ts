@@ -197,7 +197,7 @@ export function formatEnhanceError(error: unknown, model: ModelRef | undefined):
     const attempted = modelLabel(model)
     return [
       `Could not enhance prompt: free model "${attempted}" hit its free usage limit.`,
-      `Enhancement uses your current session model, the same as /btw. Switch it with /models to a model you have a key for (for example an OpenAI model), then retry.`,
+      `Enhancement uses your current session model. Switch it with /models to a model you have a key for (for example an OpenAI model), then retry.`,
       `Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go`,
       message && message !== `Free usage limit reached` ? `(${message})` : "",
     ]

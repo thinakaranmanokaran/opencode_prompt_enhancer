@@ -32,6 +32,22 @@ type EnhanceResultProps = {
 }
 
 const INSET = 3
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const
+
+function Spinner(props: { label: string; color: RGBA }) {
+  const [frame, setFrame] = createSignal(0)
+  const timer = setInterval(() => {
+    setFrame((index) => (index + 1) % SPINNER_FRAMES.length)
+  }, 80)
+  onCleanup(() => clearInterval(timer))
+
+  return (
+    <box flexDirection="row" gap={1} flexShrink={0}>
+      <text fg={props.color}>{SPINNER_FRAMES[frame()]}</text>
+      <text fg={props.color}>{props.label}</text>
+    </box>
+  )
+}
 
 function captureEditor(context: Context): EditorLike | undefined {
   try {
@@ -372,9 +388,7 @@ export default Plugin.define({
 
     const renderStatus = () => (
       <Show when={pending.count > 0}>
-        <box flexShrink={0}>
-          <text fg={context.theme.hue.interactive[200]}>/enhance</text>
-        </box>
+        <Spinner label="/enhance" color={context.theme.hue.interactive[200]} />
       </Show>
     )
 
@@ -405,8 +419,8 @@ export default Plugin.define({
         options.model ?? (selected ? { providerID: selected.providerID, id: selected.modelID } : undefined)
       try {
         const prompt = buildEnhancementPrompt(options, draft)
-        // Follow /btw by default: generate through the open session so the
-        // session's model, variant, agent, and context are used. An explicit
+        // Generate through the open session by default so the session's
+        // model, variant, agent, and context are used. An explicit
         // `model` option is the only reason to use the stateless endpoint.
         // Without an open session, use a temporary session so the selected
         // model still goes through the session generation path.

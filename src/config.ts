@@ -247,11 +247,13 @@ export function matchesPluginPackage(spec: string): boolean {
     const normalized = name.replace(/\\/g, "/")
     const last = (normalized.split("/").filter(Boolean).pop() ?? normalized).split("@")[0]!
     // Local checkouts are usually configured by absolute path. The folder name
-    // may use underscores (`opencode_prompt_enhancer`) while the package itself
-    // uses hyphens, so compare the normalized basename too.
+    // may use underscores or spaces (`opencode_prompt_enhancer`,
+    // `Opencode Prompt Enhancer Plugin`) while the package itself uses hyphens,
+    // so compare the normalized basename too.
+    const folder = last.replace(/[\s_]+/g, "-").toLowerCase().replace(/-plugin$/, "")
     return (
       normalized === PACKAGE_NAME ||
-      last.replace(/_/g, "-").toLowerCase() === PACKAGE_NAME ||
+      folder === PACKAGE_NAME ||
       normalized.endsWith(`/${PACKAGE_NAME}`) ||
       normalized.startsWith(`${PACKAGE_NAME}@`)
     )

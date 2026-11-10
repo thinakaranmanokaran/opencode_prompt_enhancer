@@ -1,0 +1,11 @@
+{
+  "developer": {
+    "name": "Thinakaran Manokaran",
+    "portfolio": "https://thinakaran.dev"
+  },
+  "prod": {
+    "name": "Opencode Prompt Enhancer",
+    "site": "https://thinakaranmanokaran.github.io/opencode_prompt_enhancer",
+    "repo": "https://github.com/thinakaranmanokaran/opencode_prompt_enhancer"
+  }
+}

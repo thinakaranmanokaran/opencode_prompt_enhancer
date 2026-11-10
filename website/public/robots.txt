@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://thinakaranmanokaran.github.io/opencode_prompt_enhancer/sitemap.xml
