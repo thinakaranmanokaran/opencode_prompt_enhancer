@@ -1,6 +1,6 @@
 import { Plugin } from "@opencode/plugin/tui"
 import type { Context } from "@opencode/plugin/tui/context"
-import { SyntaxStyle, TextAttributes } from "@opentui/core"
+import { MacOSScrollAccel, SyntaxStyle, TextAttributes } from "@opentui/core"
 import type { RGBA, ScrollBoxRenderable } from "@opentui/core"
 import { useKeyboard, useTerminalDimensions } from "@opentui/solid"
 import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js"
@@ -8,11 +8,6 @@ import {
   buildEnhancementPrompt,
   cleanEnhancedPrompt,
   formatEnhanceError,
-  isFreeLimitError,
-  modelLabel,
-  pickPaidFallbacks,
-  STATIC_PAID_FALLBACKS,
-  type ModelInfoLike,
 } from "./enhance.js"
 import { loadEnhancerOptions, type EnhancerOptions, type ModelRef } from "./config.js"
 
@@ -41,7 +36,9 @@ const INSET = 3
 function captureEditor(context: Context): EditorLike | undefined {
   try {
     const editor = context.renderer.currentFocusedEditor as unknown as EditorLike | null | undefined
-    return editor && editor.isDestroyed === false ? editor : undefined
+    return editor && editor.isDestroyed === false && typeof editor.setText === "function"
+      ? editor
+      : undefined
   } catch {
     return undefined
   }
@@ -63,24 +60,48 @@ function showToast(context: Context, message: string, variant: "info" | "success
   context.ui.toast.show({ message, variant })
 }
 
-function locationDirectory(context: Context): string | undefined {
-  const location = context.location as { directory?: string } | undefined
-  return typeof location?.directory === "string" && location.directory ? location.directory : undefined
+function currentSessionID(context: Context): string | undefined {
+  const route = context.ui.router.current()
+  return route.type === "session" ? route.sessionID : undefined
 }
 
-async function listAvailableModels(context: Context): Promise<ModelInfoLike[]> {
+/**
+ * Generate without an open session by creating a short-lived session with the
+ * currently selected model, then removing it. This keeps `/enhance` usable from
+ * the home screen without using the stateless generation endpoint, which can be
+ * blocked by the free-model quota even when session generation works.
+ */
+async function generateWithoutSession(context: Context, prompt: string) {
+  const selected = context.ui.model.current()
+  let directory = context.location?.directory
+  if (!directory) {
+    try {
+      directory = context.data.location.default().directory
+    } catch {
+      directory = undefined
+    }
+  }
+  const session = await context.client.session.create({
+    title: "/enhance",
+    ...(directory ? { location: { directory } } : {}),
+    ...(selected
+      ? {
+          model: {
+            providerID: selected.providerID,
+            id: selected.modelID,
+            ...(selected.variant ? { variant: selected.variant } : {}),
+          },
+        }
+      : {}),
+  })
   try {
-    const directory = locationDirectory(context)
-    const result: unknown = await context.client.model.list(
-      directory ? { location: { directory } } : {},
-    )
-    const data =
-      result && typeof result === "object" && "data" in result
-        ? (result as { data?: unknown }).data
-        : result
-    return Array.isArray(data) ? (data as ModelInfoLike[]) : []
-  } catch {
-    return []
+    return await context.client.session.generate({ sessionID: session.id, prompt })
+  } finally {
+    try {
+      await context.client.session.remove({ sessionID: session.id })
+    } catch {
+      // A leftover temporary session must not hide the generation result.
+    }
   }
 }
 
@@ -198,6 +219,7 @@ function EnhanceResult(props: EnhanceResultProps) {
   })
 
   const [copied, setCopied] = createSignal(false)
+  const scrollAcceleration = new MacOSScrollAccel()
   let scrollBox: ScrollBoxRenderable | undefined
 
   const copy = async () => {
@@ -233,7 +255,7 @@ function EnhanceResult(props: EnhanceResultProps) {
   }))
 
   useKeyboard((event) => {
-    if (!scrollBox || scrollBox.scrollHeight <= scrollBox.height) return
+    if (!scrollBox) return
     if (event.name === "up" || event.name === "k") scrollBox.scrollBy(-1)
     else if (event.name === "down" || event.name === "j") scrollBox.scrollBy(1)
     else if (event.name === "pageup") scrollBox.scrollBy(-maxHeight())
@@ -245,17 +267,25 @@ function EnhanceResult(props: EnhanceResultProps) {
   const close = () => context.ui.dialog.clear()
   const title = () => props.draft.replace(/\s+/g, " ").trim()
 
+  const hint = (
+    label: string,
+    shortcut: string,
+    onMouseUp?: () => void,
+    color: RGBA = theme.text.base,
+  ) => (
+    <text fg={color} onMouseUp={onMouseUp} wrapMode="none" flexShrink={0}>
+      {label} <span style={{ fg: theme.text.muted }}>{shortcut}</span>
+    </text>
+  )
+
   return (
-    <box paddingLeft={INSET} paddingRight={INSET} paddingBottom={1} gap={1}>
-      <box flexDirection="row" justifyContent="space-between" gap={2} flexShrink={0}>
+    <box flexDirection="column" flexGrow={1} minHeight={0} paddingLeft={INSET} paddingRight={INSET} paddingBottom={1} gap={1}>
+      <box flexDirection="row" gap={2} flexShrink={0}>
         <text attributes={TextAttributes.BOLD} fg={theme.text.base} flexShrink={0}>
           /enhance
         </text>
         <text fg={theme.text.muted} wrapMode="none" flexGrow={1} truncate>
           {title()}
-        </text>
-        <text fg={theme.text.muted} flexShrink={0} onMouseUp={close}>
-          esc
         </text>
       </box>
 
@@ -265,9 +295,11 @@ function EnhanceResult(props: EnhanceResultProps) {
           height="auto"
           maxHeight={maxHeight()}
           minHeight={0}
+          contentOptions={{ minHeight: 0 }}
           backgroundColor={overlay.background.raised.high}
           scrollX={false}
           scrollY
+          scrollAcceleration={scrollAcceleration}
           scrollbarOptions={{ visible: false }}
         >
           <box paddingLeft={INSET} paddingRight={INSET} paddingTop={1} paddingBottom={1}>
@@ -310,34 +342,18 @@ function EnhanceResult(props: EnhanceResultProps) {
         flexShrink={0}
       >
         <box flexDirection="row" gap={2} flexShrink={1} minWidth={0} flexWrap="wrap">
-          <text fg={theme.text.muted} onMouseUp={close}>
-            esc restore
-          </text>
-          <text fg={theme.text.muted}>scroll</text>
-          <text fg={theme.text.muted}>j/k ↑/↓</text>
+          {hint("esc", "restore", close, theme.text.muted)}
+          {hint("scroll", "j/k ↑/↓", undefined, theme.text.muted)}
         </box>
         <box flexDirection="row" gap={2} flexShrink={0}>
-          <text
-            fg={copied() ? theme.text.feedback.success.base : theme.text.base}
-            onMouseUp={() => void copy()}
-          >
-            {copied() ? "✓ copied" : "copy"}
-          </text>
-          <text fg={theme.text.muted} onMouseUp={() => void copy()}>
-            c
-          </text>
-          <text fg={theme.text.muted} onMouseUp={props.actions.retry}>
-            retry
-          </text>
-          <text fg={theme.text.muted} onMouseUp={props.actions.retry}>
-            r
-          </text>
-          <text fg={theme.text.base} onMouseUp={props.actions.insert}>
-            insert
-          </text>
-          <text fg={theme.text.muted} onMouseUp={props.actions.insert}>
-            return
-          </text>
+          {hint(
+            copied() ? "✓ copied" : "copy",
+            "c",
+            () => void copy(),
+            copied() ? theme.text.feedback.success.base : theme.text.base,
+          )}
+          {hint("retry", "r", props.actions.retry, theme.text.muted)}
+          {hint("insert", "return", props.actions.insert, theme.text.base)}
         </box>
       </box>
     </box>
@@ -347,114 +363,102 @@ function EnhanceResult(props: EnhanceResultProps) {
 export default Plugin.define({
   id: "opencode.prompt-enhancer.tui",
   setup(context) {
-    const [pending, setPending] = createSignal(0)
+    // Keep the pending flag in shared memory rather than a local signal. The
+    // plugin can be loaded by more than one config layer (global + project),
+    // and the instance that runs the command is not necessarily the instance
+    // that renders the footer slot. Memory is namespaced by plugin id, so all
+    // instances observe the same counter.
+    const [pending, setPending] = context.storage.memory("pending", { initial: { count: 0 } })
 
-    const disposeStatusSlot = context.ui.slot({
+    const renderStatus = () => (
+      <Show when={pending.count > 0}>
+        <box flexShrink={0}>
+          <text fg={context.theme.hue.interactive[200]}>/enhance</text>
+        </box>
+      </Show>
+    )
+
+    const disposePromptStatus = context.ui.slot({
       append: "prompt.footer.status",
-      render: () => (
-        <Show when={pending() > 0}>
-          <box flexShrink={0}>
-            <text fg={context.theme.hue.interactive[200]}>enhancing…</text>
-          </box>
-        </Show>
-      ),
+      render: renderStatus,
     })
-
-    async function generateText(prompt: string, model: ModelRef | undefined) {
-      return context.client.experimental.generate.text({
-        prompt,
-        model: model ? { providerID: model.providerID, id: model.id } : undefined,
-      })
-    }
+    // The home screen has a separate footer slot; without this claim the
+    // indicator never appears when /enhance runs before a session is open.
+    const disposeHomeStatus = context.ui.slot({
+      append: "home.footer.status",
+      render: renderStatus,
+    })
 
     async function enhanceDraft(
       draft: string,
       options: EnhancerOptions,
       editor: EditorLike | undefined,
       restoreText: string | undefined,
+      sessionID: string | undefined,
     ) {
-      setPending((count) => count + 1)
+      setPending((draft) => {
+        draft.count += 1
+      })
       let enhanced = ""
-      let usedModel: ModelRef | undefined
+      const selected = context.ui.model.current()
+      const attempted: ModelRef | undefined =
+        options.model ?? (selected ? { providerID: selected.providerID, id: selected.modelID } : undefined)
       try {
         const prompt = buildEnhancementPrompt(options, draft)
-        const selected = context.ui.model.current()
-        const selectedRef: ModelRef | undefined = selected
-          ? { providerID: selected.providerID, id: selected.modelID }
-          : undefined
-        const primary: ModelRef | undefined = options.model ?? selectedRef
-        try {
-          const result = await generateText(prompt, primary)
-          enhanced = cleanEnhancedPrompt(result.text)
-          usedModel = primary
-          if (!enhanced) throw new Error("The model returned an empty enhancement.")
-        } catch (error) {
-          if (!isFreeLimitError(error)) throw error
-          const available = await listAvailableModels(context)
-          const fallbacks = pickPaidFallbacks(available, [primary], 2)
-          const candidates =
-            fallbacks.length > 0
-              ? fallbacks
-              : STATIC_PAID_FALLBACKS.filter(
-                  (fallback) =>
-                    !primary || fallback.providerID !== primary.providerID || fallback.id !== primary.id,
-                )
-          // If the free model hit its limit, retry with a paid model so /enhance
-          // keeps working instead of surfacing the free-quota error.
-          let lastFreeError: unknown = error
-          for (const fallback of candidates) {
-            try {
-              const result = await generateText(prompt, fallback)
-              const candidate = cleanEnhancedPrompt(result.text)
-              if (!candidate) continue
-              enhanced = candidate
-              usedModel = fallback
-              lastFreeError = undefined
-              break
-            } catch (fallbackError) {
-              if (isFreeLimitError(fallbackError)) {
-                lastFreeError = fallbackError
-                continue
-              }
-              throw fallbackError
-            }
-          }
-          if (!enhanced) throw lastFreeError
-          showToast(
-            context,
-            `Free model limit reached — enhanced with ${modelLabel(usedModel)} instead.`,
-            "warning",
+        // Follow /btw by default: generate through the open session so the
+        // session's model, variant, agent, and context are used. An explicit
+        // `model` option is the only reason to use the stateless endpoint.
+        // Without an open session, use a temporary session so the selected
+        // model still goes through the session generation path.
+        const configured = options.model
+        const result = configured
+          ? await context.client.experimental.generate.text({
+              prompt,
+              model: { providerID: configured.providerID, id: configured.id },
+            })
+          : sessionID
+            ? await context.client.session.generate({ sessionID, prompt })
+            : await generateWithoutSession(context, prompt)
+        enhanced = cleanEnhancedPrompt(result.text)
+        if (!enhanced) {
+          throw new Error(
+            sessionID
+              ? "The model returned an empty enhancement. If this session is very long, start a new one or switch models with /models, then retry."
+              : "The model returned an empty enhancement. Switch models with /models, then retry.",
           )
         }
       } catch (error) {
         if (restoreText) setEditorText(editor, restoreText)
-        const selected = context.ui.model.current()
-        const attempted: ModelRef | undefined =
-          options.model ?? (selected ? { providerID: selected.providerID, id: selected.modelID } : undefined)
         showToast(context, formatEnhanceError(error, attempted), "error")
         return
       } finally {
-        setPending((count) => Math.max(0, count - 1))
+        setPending((draft) => {
+          draft.count = Math.max(0, draft.count - 1)
+        })
       }
 
       const dialogState = { finished: false, retrying: false }
       const actions: ResultActions = {
         insert: () => {
           dialogState.finished = true
-          const inserted = setEditorText(editor, enhanced)
           context.ui.dialog.clear()
-          if (inserted) {
-            showToast(context, "Enhanced prompt inserted in the composer.", "success")
-          } else {
-            const copied = context.renderer.copyToClipboardOSC52(enhanced)
-            showToast(
-              context,
-              copied
-                ? "Could not access the composer; enhanced prompt copied instead."
-                : "Could not access the composer or copy the enhanced prompt.",
-              copied ? "warning" : "error",
-            )
-          }
+          // Let the dialog release focus before writing back to the composer.
+          setTimeout(() => {
+            const target = captureEditor(context) ?? editor
+            const inserted = setEditorText(target, enhanced)
+            if (inserted) {
+              showToast(context, "Enhanced prompt inserted in the composer.", "success")
+            } else {
+              const copied = context.renderer.copyToClipboardOSC52(enhanced)
+              showToast(
+                context,
+                copied
+                  ? "Could not access the composer; enhanced prompt copied instead."
+                  : "Could not access the composer or copy the enhanced prompt.",
+                copied ? "warning" : "error",
+              )
+            }
+          }, 0)
         },
         copy: async () => {
           let copied = false
@@ -473,7 +477,7 @@ export default Plugin.define({
         retry: () => {
           dialogState.retrying = true
           context.ui.dialog.clear()
-          void enhanceDraft(draft, options, editor, restoreText)
+          void enhanceDraft(draft, options, editor, restoreText, sessionID)
         },
       }
 
@@ -490,25 +494,42 @@ export default Plugin.define({
     }
 
     async function runEnhance(rawInput?: string) {
-      const editor = captureEditor(context)
-      const loaded = await loadEnhancerOptions(context)
-      for (const warning of loaded.warnings) {
-        showToast(context, warning, "warning")
-      }
+      const sessionID = currentSessionID(context)
 
-      const slashInput = rawInput?.trim() ?? ""
-      let draft = slashInput
-      if (!draft) {
-        draft =
-          (await context.ui.dialog.prompt({
-            title: "/enhance",
-            placeholder: "Describe the prompt you want to improve",
-          }))?.trim() ?? ""
-      }
-      if (!draft) return
+      try {
+        let editor = captureEditor(context)
+        const loaded = await loadEnhancerOptions(context)
+        for (const warning of loaded.warnings) {
+          showToast(context, warning, "warning")
+        }
 
-      const restoreText = slashInput ? `/enhance ${draft}` : undefined
-      await enhanceDraft(draft, loaded.options, editor, restoreText)
+        const slashInput = rawInput?.trim() ?? ""
+        let draft = slashInput
+        if (!draft) {
+          draft =
+            (await context.ui.dialog.prompt({
+              title: "/enhance",
+              placeholder: "Describe the prompt you want to improve",
+            }))?.trim() ?? ""
+          // The prompt dialog takes focus; capture the composer again after it
+          // closes so Insert writes to the right editor.
+          editor = captureEditor(context) ?? editor
+        }
+        if (!draft) return
+
+        const restoreText = slashInput ? `/enhance ${draft}` : undefined
+        await enhanceDraft(draft, loaded.options, editor, restoreText, sessionID)
+      } catch (error) {
+        const selected = context.ui.model.current()
+        showToast(
+          context,
+          formatEnhanceError(
+            error,
+            selected ? { providerID: selected.providerID, id: selected.modelID } : undefined,
+          ),
+          "error",
+        )
+      }
     }
 
     async function showResolvedConfig() {
@@ -556,6 +577,9 @@ export default Plugin.define({
       ],
     }))
 
-    return () => disposeStatusSlot()
+    return () => {
+      disposePromptStatus()
+      disposeHomeStatus()
+    }
   },
 })

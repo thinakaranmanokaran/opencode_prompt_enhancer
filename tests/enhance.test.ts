@@ -5,9 +5,6 @@ import {
   cleanEnhancedPrompt,
   formatEnhanceError,
   isFreeLimitError,
-  isFreeModel,
-  pickPaidFallback,
-  pickPaidFallbacks,
 } from "../src/enhance.ts"
 
 test("builds the default enhancement prompt with the draft and rules", () => {
@@ -85,33 +82,6 @@ test("detects free usage limit errors", () => {
   assert.equal(isFreeLimitError("Free Usage Limit Reached"), true)
 })
 
-test("detects free models by zero cost or -free suffix", () => {
-  assert.equal(isFreeModel({ providerID: "opencode", id: "iceman-free", cost: [{ input: 0 }] }), true)
-  assert.equal(isFreeModel({ providerID: "opencode", id: "big-pickle", cost: [{ input: 0 }] }), true)
-  assert.equal(isFreeModel({ providerID: "opencode", id: "beam-free", cost: [{ input: 0 }] }), true)
-  assert.equal(isFreeModel({ providerID: "openai", id: "gpt-6-luna", cost: [{ input: 0.1 }] }), false)
-  assert.equal(isFreeModel({ providerID: "opencode", id: "mystery-free" }), true)
-  assert.equal(isFreeModel({ providerID: "opencode", id: "disabled-free", cost: [{ input: 0 }], enabled: false }), false)
-})
-
-test("picks the cheapest paid fallback model", () => {
-  const models = [
-    { providerID: "opencode", id: "iceman-free", cost: [{ input: 0 }], enabled: true },
-    { providerID: "openai", id: "gpt-6.1-sol", cost: [{ input: 2 }], enabled: true },
-    { providerID: "openai", id: "gpt-6-luna", cost: [{ input: 0.1 }], enabled: true },
-    { providerID: "opencode", id: "gpt-6-luna", cost: [{ input: 0.1 }], enabled: true },
-    { providerID: "openai", id: "off", cost: [{ input: 0.05 }], enabled: false },
-    { providerID: "opencode", id: "img", cost: [{ input: 0 }], enabled: true, type: "image" },
-  ]
-
-  assert.deepEqual(pickPaidFallback(models), { providerID: "openai", id: "gpt-6-luna" })
-  assert.deepEqual(
-    pickPaidFallbacks(models, [{ providerID: "openai", id: "gpt-6-luna" }]),
-    [{ providerID: "opencode", id: "gpt-6-luna" }, { providerID: "openai", id: "gpt-6.1-sol" }],
-  )
-  assert.equal(pickPaidFallback(models.map((m) => ({ ...m, enabled: false }))), undefined)
-})
-
 test("formats an actionable free-limit error", () => {
   const message = formatEnhanceError(
     new Error(
@@ -123,7 +93,7 @@ test("formats an actionable free-limit error", () => {
   assert.match(message, /Could not enhance prompt/)
   assert.match(message, /opencode\/iceman-free/)
   assert.match(message, /\/models/)
-  assert.match(message, /options\.model/)
+  assert.match(message, /session model/)
   assert.match(message, /https:\/\/opencode\.ai\/go/)
 })
 

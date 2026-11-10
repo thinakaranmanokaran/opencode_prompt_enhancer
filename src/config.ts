@@ -239,17 +239,23 @@ function packageNames(spec: string): string[] {
   return [...new Set(names)]
 }
 
-function matchesPluginPackage(spec: string): boolean {
+export function matchesPluginPackage(spec: string): boolean {
   const currentLocation = (spec: string) =>
     spec === "." || spec === "./" || spec === "./opencode-prompt-enhancer"
   if (currentLocation(spec)) return true
-  return packageNames(spec).some(
-    (name) =>
-      name === PACKAGE_NAME ||
-      name.endsWith(`/${PACKAGE_NAME}`) ||
-      name.endsWith(`/${PACKAGE_NAME}@`) ||
-      name.startsWith(`${PACKAGE_NAME}@`),
-  )
+  return packageNames(spec).some((name) => {
+    const normalized = name.replace(/\\/g, "/")
+    const last = (normalized.split("/").filter(Boolean).pop() ?? normalized).split("@")[0]!
+    // Local checkouts are usually configured by absolute path. The folder name
+    // may use underscores (`opencode_prompt_enhancer`) while the package itself
+    // uses hyphens, so compare the normalized basename too.
+    return (
+      normalized === PACKAGE_NAME ||
+      last.replace(/_/g, "-").toLowerCase() === PACKAGE_NAME ||
+      normalized.endsWith(`/${PACKAGE_NAME}`) ||
+      normalized.startsWith(`${PACKAGE_NAME}@`)
+    )
+  })
 }
 
 function isRecordWithKeys(value: unknown): value is Record<string, unknown> {

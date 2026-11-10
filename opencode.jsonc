@@ -2,7 +2,7 @@
   "$schema": "https://opencode.ai/config.json",
   "plugins": [
     {
-      "package": ".",
+      "package": "D:/GitHub/Open Source/opencode_prompt_enhancer",
       "options": {
         "role": "Software Developer",
         "experience": "25 years",

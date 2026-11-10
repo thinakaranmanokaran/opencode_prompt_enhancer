@@ -1,6 +1,22 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { mergeEnhancerOptions, normalizePluginOptions } from "../src/config.ts"
+import type { Context } from "@opencode/plugin/tui/context"
+import {
+  loadEnhancerOptions,
+  matchesPluginPackage,
+  mergeEnhancerOptions,
+  normalizePluginOptions,
+} from "../src/config.ts"
+
+test("matches package names, versions, and local checkout paths", () => {
+  assert.equal(matchesPluginPackage("opencode-prompt-enhancer"), true)
+  assert.equal(matchesPluginPackage("opencode-prompt-enhancer@1.0.3"), true)
+  assert.equal(matchesPluginPackage("."), true)
+  assert.equal(matchesPluginPackage("D:/GitHub/Open Source/opencode_prompt_enhancer"), true)
+  assert.equal(matchesPluginPackage("D:\\GitHub\\Open Source\\opencode_prompt_enhancer"), true)
+  assert.equal(matchesPluginPackage("C:/Users/dheen"), false)
+  assert.equal(matchesPluginPackage("another-plugin"), false)
+})
 
 test("normalizes valid options and converts numeric experience", () => {
   const result = normalizePluginOptions(
@@ -62,6 +78,38 @@ test("normalizes string and object examples", () => {
     { input: "fix login", output: "repair the login flow" },
     { input: "add tests", output: "add unit tests" },
   ])
+})
+
+test("loads options from files that reference the checkout by absolute path", async () => {
+  const path = "D:/GitHub/Open Source/opencode_prompt_enhancer"
+  const context = {
+    location: { directory: path },
+    client: {
+      config: {
+        get: async () => [
+          {
+            type: "document",
+            path: "user.jsonc",
+            info: { plugins: [{ package: path, options: { role: "User Role" } }] },
+          },
+          {
+            type: "document",
+            path: "project.jsonc",
+            info: { plugins: [{ package: path, options: { tone: "direct" } }] },
+          },
+        ],
+      },
+    },
+    options: { role: "activation role that should not override config" },
+  }
+
+  const loaded = await loadEnhancerOptions(context as unknown as Context)
+
+  assert.deepEqual(loaded.options, { role: "User Role", tone: "direct" })
+  assert.deepEqual(
+    loaded.sources.map((source) => source.path),
+    ["user.jsonc", "project.jsonc"],
+  )
 })
 
 test("merges sources field by field with higher priority winning", () => {

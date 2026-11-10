@@ -5,8 +5,9 @@ A TUI plugin for OpenCode that offers `/enhance`. It rewrites a rough draft into
 ## Requirements
 
 - OpenCode v2 (tested with v2.2.5).
-- A configured provider and model. Enhancement uses the currently selected prompt model unless the `model` option is set. The draft is sent to that provider through OpenCode when you run `/enhance`.
-- If the selected model is a free OpenCode model (for example `opencode/iceman-free`) and it reports `Free usage limit reached`, `/enhance` automatically retries once with the cheapest enabled paid model (for example `openai/gpt-6-luna` when an OpenAI key is configured). You will see a `Free model limit reached — enhanced with <model> instead.` toast. If no paid model is available, the error explains how to switch models or pin the enhancer model.
+- No open session required. With a session open, `/enhance` uses it through the same generation path as `/btw`. From the home screen, it uses a temporary session with the selected model and removes that session immediately.
+- A configured provider and model. By default the open session's model is used; from the home screen, the currently selected model is used. The `model` option is an explicit override.
+- If the current model is a free OpenCode model (for example `opencode/iceman-free`), `/enhance` shares the same free quota as `/btw`. It fails once with a clear error instead of retrying other models.
 
 ## Install
 
@@ -30,7 +31,8 @@ Pin a release with `"opencode-prompt-enhancer@0.1.1"`. OpenCode installs the pac
 
 - `/enhance <draft>` enhances the draft immediately.
 - `/enhance` opens the built-in prompt dialog.
-- While enhancement runs, the prompt footer shows `enhancing…`.
+- With a session open, the request goes through `session.generate`, the same path `/btw` uses, so the session model and context are used. From the home screen, `/enhance` creates a temporary session with the selected model, generates the result, and removes the temporary session.
+- While enhancement runs, the prompt footer shows `/enhance`, mirroring `/btw`.
 - In the result modal:
   - `Enter` inserts the enhanced prompt into the current composer.
   - `Esc` restores the original `/enhance <draft>` text when it was supplied on the slash command.
@@ -130,7 +132,7 @@ The plugin must be listed in the config where you want options to take effect, u
 | `rules` | string[] | Enhancement rules. Replaces the default rules when set. |
 | `examples` | array | Few-shot examples using `{ "input": "...", "output": "..." }` or strings. |
 | `extraInstructions` | string | Appended to the generated enhancement prompt. |
-| `model` | `{ providerID, id }` | Model used for enhancement. Falls back to the selected prompt model, then the server default. If the selected model is a free model that hits its free usage limit, `/enhance` retries with the cheapest enabled paid model. Set this to a paid model to avoid the free quota entirely. |
+| `model` | `{ providerID, id }` | Explicit model override. Unset by default so `/enhance` uses the open session's model through `session.generate`, or creates a temporary session with the selected model when no session is open. When set, `/enhance` uses the stateless generation endpoint for that model and does not follow `/models` changes. |
 
 Custom templates support these placeholders:
 
@@ -152,27 +154,26 @@ If a custom template does not contain `{{draft}}`, the plugin appends the draft 
 
 ### Free-model usage limit
 
-Free OpenCode models (for example `opencode/iceman-free`, `crouton-alpha-free`, `beam-free`) stop working once their free usage limit is reached. If your composer is on a free model, `/enhance` uses that model by default and will hit the same limit.
+Free OpenCode models (for example `opencode/iceman-free`, `crouton-alpha-free`, `beam-free`) share one free quota. Because `/enhance` uses the session generation path, it hits exactly the same limit as `/btw`.
 
-- `/enhance` now detects the `Free usage limit reached` error and automatically retries with the cheapest enabled paid model so it keeps working without changing your composer model. You will see a toast naming the fallback model.
-- To avoid the free quota entirely, pin the enhancer to a paid model (for example the OpenAI model you already have a key for):
+- `/enhance` makes one attempt. It does not retry other free models or switch to a paid provider automatically. The error names the model that was tried and tells you to switch with `/models`.
+- To use a different model from the session one, set `model` explicitly:
 
   ```jsonc
   {
     "plugins": [
       {
         "package": "opencode-prompt-enhancer",
-        "options": { "model": "openai/gpt-6-luna" }
+        "options": { "model": "openai/<your-model>" }
       }
     ]
   }
   ```
 
-  The `model` option also accepts `{ "providerID": "openai", "id": "gpt-6-luna" }`. Run `/reload` after editing.
-- Alternatively, run `/models` and switch the composer itself to a paid model such as `openai/gpt-6-luna`.
-- If every attempt reports the free limit, `/enhance` shows an error naming the free model that was tried plus these fixes. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go
+  The `model` option also accepts `{ "providerID": "openai", "id": "<your-model>" }`. Run `/reload` after editing. Leave it unset to follow the open session's model, or the currently selected model when no session is open.
+- When the current model is a free model and its quota is exhausted, run `/models` and select a model you have a key for. Free models work in OpenCode (https://opencode.ai); subscribe to OpenCode Go to keep going: https://opencode.ai/go
 
-To verify this machine's free-quota state, load the plugin and run **Show prompt enhancer config** from the command palette — it prints the merged options and warnings. The server log `~/.local/share/opencode/log/opencode.log` records the failing `/generate` request.
+To verify this machine's free-quota state, load the plugin and run **Show prompt enhancer config** from the command palette — it prints the merged options and warnings. The server log `~/.local/share/opencode/log/opencode.log` records the failing request.
 
 ## Development
 
@@ -185,7 +186,7 @@ npm test
 npm run build
 ```
 
-The plugin is compiled from `src/` to `dist/` with Babel + Solid (universal generate) before publishing. The checked-in `opencode.jsonc` loads `./dist` as a local plugin and includes sample persona options. Run `npm run build` after editing `src/` before `/reload`.
+The plugin is compiled from `src/` to `dist/` with Babel + Solid (universal generate) before publishing. The checked-in `opencode.jsonc` loads this checkout by absolute path (replace it with your own checkout path) and includes sample persona options. Run `npm run build` after editing `src/` before `/reload`.
 
 > Publishing raw `.tsx` from `node_modules` does not work: the Solid transform skips `node_modules`, so JSX falls back to React (`Cannot find package 'react'`). Always publish compiled `dist/*.js`, never raw TSX.
 
