@@ -40,8 +40,8 @@ export const site = {
   },
   video: {
     uploadDate: "2026-11-10",
-    duration: "PT47S",
-    width: 1748,
+    duration: "PT31S",
+    width: 1752,
     height: 1080,
   },
   transcript:

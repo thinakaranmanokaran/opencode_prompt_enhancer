@@ -54,7 +54,7 @@ run([
 run([
   "-y",
   "-ss",
-  "43",
+  "28",
   "-i",
   sourceVideo,
   "-frames:v",

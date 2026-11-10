@@ -15,10 +15,10 @@ export const pages = [
     navLabel: "Home",
     title: "OpenCode Prompt Enhancer — /enhance tutorial",
     description:
-      "Watch the 47-second /enhance tutorial. OpenCode Prompt Enhancer is a free, open-source TUI plugin that turns rough drafts into precise prompts for AI coding agents.",
+      "Watch the 31-second /enhance tutorial. OpenCode Prompt Enhancer is a free, open-source TUI plugin that turns rough drafts into precise prompts for AI coding agents.",
     heading: "OpenCode Prompt Enhancer tutorial",
     intro:
-      "A 47-second walkthrough of /enhance in OpenCode, from a rough draft to a prompt inserted in the composer.",
+      "A 31-second walkthrough of /enhance in OpenCode, from a rough draft to a prompt inserted in the composer.",
   },
   {
     path: "/install/",
@@ -146,7 +146,7 @@ function graphFor(page: PageSeo) {
     "@id": `${site.url}/#tutorial`,
     name: "OpenCode Prompt Enhancer tutorial",
     description:
-      "A 47-second walkthrough of /enhance in OpenCode: enhance a draft, review the result, and insert it into the composer.",
+      "A 31-second walkthrough of /enhance in OpenCode: enhance a draft, review the result, and insert it into the composer.",
     thumbnailUrl: [`${site.url}/media/tutorial-poster.jpg`],
     uploadDate: site.video.uploadDate,
     duration: site.video.duration,

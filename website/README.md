@@ -7,7 +7,7 @@ Video-first site for OpenCode Prompt Enhancer.
 - `/about/` — developer and project details
 - React 19 + Vite 8 + TypeScript
 - Tailwind CSS v4
-- Space Grotesk variable font, self-hosted and inlined
+- System font stack (Helvetica Neue / Helvetica / Arial)
 - Mobile hamburger navigation
 - Prerendered HTML for every route at build time
 - GitHub Pages deployment from `.github/workflows/pages.yml`
@@ -58,8 +58,8 @@ public/
 
 The original `Tutorial.gif` is 155 MB and exceeds GitHub's 100 MB file limit, so it stays local at `website/Tutorial.gif` and is ignored by git. The web GIF is generated from the higher-quality `website/Tutorial.mp4`. On desktop the video autoplays muted and loops with no visible controls; clicking the video or the icon-only pause button toggles playback. On mobile the home page shows a poster image and text panel instead of the video. The site ships:
 
-- `tutorial.mp4` — 675 KB, 1748×1080, 30 fps, no audio
-- `tutorial.gif` — 1.75 MB, 1440×889, 12 fps, 128 colours, available asset
+- `tutorial.mp4` — 675 KB, 1752×1080, 30 fps, no audio
+- `tutorial.gif` — 1.75 MB, 1440×888, 12 fps, 128 colours, available asset
 - `tutorial-poster.jpg` — 176 KB, full-size fallback
 - `tutorial-poster.avif` / `.webp` — 50 KB / 75 KB
 - `tutorial-poster-900.avif` / `.webp` / `.jpg` — 24 KB / 32 KB / 56 KB, desktop srcset

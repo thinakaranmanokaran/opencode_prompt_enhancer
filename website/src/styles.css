@@ -1,14 +1,5 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: "Space Grotesk";
-  font-style: normal;
-  font-weight: 300 700;
-  font-display: optional;
-  src: url("./fonts/space-grotesk.woff2") format("woff2-variations");
-}
-
-
 :root {
   --paper: #f4f1ea;
   --paper-deep: #ece7dc;
@@ -18,9 +9,9 @@
   --rule-dark: #3a3732;
   --accent: #ff4800;
   --accent-ink: #a93400;
-  --font-title: "Space Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-title: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display: var(--font-title);
-  --font-sans: "Space Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   --shell: 1440px;
   --gutter: clamp(1.25rem, 4vw, 4rem);
@@ -257,6 +248,7 @@ code {
 }
 
 .shell--home .top-rail {
+  max-width: none;
   border-bottom: 0;
   color: var(--paper);
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0));
@@ -345,9 +337,7 @@ code {
   display: block;
   width: 100%;
   height: 100%;
-  max-width: 1600px;
-  max-height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   background: transparent;
 }
 

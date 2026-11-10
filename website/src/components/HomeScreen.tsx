@@ -21,6 +21,7 @@ function PauseIcon() {
 
 export function HomeScreen() {
   const [playing, setPlaying] = useState(true)
+  const [failed, setFailed] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const poster = asset("media/tutorial-poster.jpg")
   const posterWebp = asset("media/tutorial-poster.webp")
@@ -44,6 +45,11 @@ export function HomeScreen() {
     if (!video) return
     if (video.paused) void video.play().catch(() => {})
     else video.pause()
+  }
+
+  function handlePlaybackError() {
+    setFailed(true)
+    setPlaying(false)
   }
 
   return (
@@ -121,23 +127,26 @@ export function HomeScreen() {
           onClick={togglePlayback}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
+          onError={handlePlaybackError}
           onCanPlay={(event) => {
             if (!window.matchMedia("(min-width: 701px)").matches) return
             void event.currentTarget.play().catch(() => {})
           }}
         >
-          <source src={mp4} type="video/mp4" />
+          <source src={mp4} type="video/mp4" onError={handlePlaybackError} />
           Your browser does not support video. <a href={mp4}>Download the tutorial</a>.
         </video>
 
-        <button
-          type="button"
-          className="home-screen-pause"
-          onClick={togglePlayback}
-          aria-label={playing ? "Pause video" : "Play video"}
-        >
-          {playing ? <PauseIcon /> : <PlayIcon />}
-        </button>
+        {failed ? null : (
+          <button
+            type="button"
+            className="home-screen-pause"
+            onClick={togglePlayback}
+            aria-label={playing ? "Pause video" : "Play video"}
+          >
+            {playing ? <PauseIcon /> : <PlayIcon />}
+          </button>
+        )}
       </div>
     </div>
   )

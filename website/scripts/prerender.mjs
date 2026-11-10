@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { access, mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { fileURLToPath } from "node:url"
@@ -7,6 +7,16 @@ const website = join(dirname(fileURLToPath(import.meta.url)), "..")
 const distDir = join(website, "dist")
 const templateFile = join(distDir, "index.html")
 const serverEntry = join(website, "dist-ssr", "entry-server.js")
+
+for (const asset of ["media/tutorial.mp4", "media/tutorial-poster.jpg"]) {
+  try {
+    await access(join(distDir, asset))
+  } catch {
+    throw new Error(
+      `Missing ${asset} in the build output. Restore website/Tutorial.mp4 and run \`npm run media\` before building.`,
+    )
+  }
+}
 
 const template = await readFile(templateFile, "utf8")
 const { render, pages, base, buildSeo } = await import(pathToFileURL(serverEntry).href)
