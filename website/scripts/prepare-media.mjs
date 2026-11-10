@@ -116,7 +116,7 @@ const ogSvg = `
   <text x="88" y="356" fill="#5c564b" font-family="Arial, Helvetica, sans-serif" font-size="30">Turn rough prompts into precise instructions.</text>
   <rect x="88" y="430" width="1024" height="2" fill="#ff4800"/>
   <text x="88" y="500" fill="#141414" font-family="'Courier New', monospace" font-size="22" letter-spacing="1">/enhance</text>
-  <text x="88" y="548" fill="#5c564b" font-family="Arial, Helvetica, sans-serif" font-size="20">OpenCode TUI plugin · v1.0.3 · MIT</text>
+  <text x="88" y="548" fill="#5c564b" font-family="Arial, Helvetica, sans-serif" font-size="20">OpenCode TUI plugin · v1.0.4 · MIT</text>
   <text x="1112" y="548" text-anchor="end" fill="#5c564b" font-family="'Courier New', monospace" font-size="18">thinakaranmanokaran.github.io</text>
   <text x="1112" y="96" text-anchor="end" fill="#a93400" font-family="'Courier New', monospace" font-size="18">01 / 01</text>
 </svg>

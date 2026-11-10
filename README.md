@@ -24,7 +24,7 @@ Add the plugin to your global or project `opencode.jsonc`:
 }
 ```
 
-Pin a release with `"opencode-prompt-enhancer@1.0.3"`. OpenCode installs the package and loads its TUI part automatically. If the TUI connects to a remote server and you want this plugin to keep running locally, add it to `~/.config/opencode/cli.json` instead. Run `/reload` if the command does not appear.
+Pin a release with `"opencode-prompt-enhancer@1.0.4"`. OpenCode installs the package and loads its TUI part automatically. If the TUI connects to a remote server and you want this plugin to keep running locally, add it to `~/.config/opencode/cli.json` instead. Run `/reload` if the command does not appear.
 
 ## Usage
 
