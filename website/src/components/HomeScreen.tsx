@@ -62,7 +62,7 @@ export function HomeScreen() {
           <source srcSet={mobileHeroWebp} type="image/webp" />
           <img
             src={mobileHero}
-            alt="OpenCode home screen with the /enhance command typed into the composer."
+            alt="OpenCode Prompt Enhancer running in the OpenCode home screen with /enhance typed into the composer."
             width={1244}
             height={767}
             fetchPriority="high"
@@ -73,8 +73,8 @@ export function HomeScreen() {
         <p className="home-mobile-eyebrow">OpenCode / TUI plugin</p>
         <h2 className="home-mobile-title">Turn rough prompts into precise instructions.</h2>
         <p className="home-mobile-copy">
-          A free, open-source TUI plugin. Type <code>/enhance</code>, get a sharper prompt for your
-          AI coding agent, then insert it straight into the composer.
+          OpenCode Prompt Enhancer is a free, open-source TUI plugin. Type <code>/enhance</code>,
+          get a sharper prompt for your AI coding agent, then insert it straight into the composer.
         </p>
         <div className="home-mobile-install">
           <code>{site.installCommand}</code>

@@ -3,6 +3,7 @@ import { Footer } from "./components/Footer"
 import { ScrollToTop } from "./components/ScrollToTop"
 import { TopRail } from "./components/TopRail"
 import { AboutPage } from "./pages/AboutPage"
+import { GuidePage } from "./pages/GuidePage"
 import { HomePage } from "./pages/HomePage"
 import { InstallPage } from "./pages/InstallPage"
 
@@ -41,6 +42,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/install/" element={<InstallPage />} />
+            <Route path="/guide/" element={<GuidePage />} />
             <Route path="/about/" element={<AboutPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

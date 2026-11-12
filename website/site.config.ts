@@ -32,6 +32,8 @@ export const site = {
   version: meta.version,
   licenseName: meta.license,
   year: 2026,
+  published: "2026-11-10",
+  updated: "2026-11-12",
   installCommand: "opencode plugin add opencode-prompt-enhancer",
   developer: {
     name: details.developer.name,

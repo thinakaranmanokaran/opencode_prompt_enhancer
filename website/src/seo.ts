@@ -13,10 +13,10 @@ export const pages = [
   {
     path: "/",
     navLabel: "Home",
-    title: "OpenCode Prompt Enhancer — /enhance tutorial",
+    title: "OpenCode Prompt Enhancer — /enhance tutorial & install",
     description:
-      "Watch the 31-second /enhance tutorial. OpenCode Prompt Enhancer is a free, open-source TUI plugin that turns rough drafts into precise prompts for AI coding agents.",
-    heading: "OpenCode Prompt Enhancer tutorial",
+      "OpenCode Prompt Enhancer is a free, open-source TUI plugin that turns rough drafts into precise prompts with /enhance. Watch the 31-second tutorial.",
+    heading: "OpenCode Prompt Enhancer",
     intro:
       "A 31-second walkthrough of /enhance in OpenCode, from a rough draft to a prompt inserted in the composer.",
   },
@@ -39,6 +39,16 @@ export const pages = [
     heading: "About the project.",
     intro:
       "A small, focused tool for better prompts in OpenCode — built and maintained by Thinakaran Manokaran.",
+  },
+  {
+    path: "/guide/",
+    navLabel: "Guide",
+    title: "How to enhance prompts in OpenCode — /enhance guide",
+    description:
+      "A practical guide to enhancing prompts in OpenCode with /enhance: what the plugin rewrites, when to use it, and how to configure it for your project.",
+    heading: "How to enhance prompts in OpenCode.",
+    intro:
+      "Use /enhance to turn a rough draft into a clearer, more specific prompt — without leaving the OpenCode composer.",
   },
 ] satisfies PageSeo[]
 
@@ -87,6 +97,8 @@ function graphFor(page: PageSeo) {
     codeRepository: site.repo,
     downloadUrl: site.npm,
     installUrl: site.npm,
+    softwareHelp: `${site.url}/install/`,
+    sameAs: [site.repo, site.npm],
     isAccessibleForFree: true,
     offers: {
       "@type": "Offer",
@@ -127,6 +139,8 @@ function graphFor(page: PageSeo) {
     about: { "@id": `${site.url}/#app` },
     primaryImageOfPage: { "@id": `${site.url}/#poster` },
     inLanguage: "en",
+    datePublished: site.published,
+    dateModified: site.updated,
     ...(page.path === "/" ? { mainEntity: { "@id": `${site.url}/#tutorial` } } : {}),
     ...(breadcrumb(page) ? { breadcrumb: { "@id": `${canonical}#breadcrumb` } } : {}),
   }
@@ -169,9 +183,54 @@ function graphFor(page: PageSeo) {
     })),
   }
 
+  const howTo = {
+    "@type": "HowTo",
+    "@id": `${site.url}/install/#howto`,
+    name: "How to install OpenCode Prompt Enhancer",
+    description: "Install the OpenCode Prompt Enhancer plugin and run /enhance in OpenCode.",
+    totalTime: "PT1M",
+    tool: [{ "@type": "HowToTool", name: "OpenCode v2" }],
+    step: [
+      {
+        "@type": "HowToStep",
+        position: 1,
+        name: "Install the plugin",
+        text: `Run ${site.installCommand}.`,
+      },
+      {
+        "@type": "HowToStep",
+        position: 2,
+        name: "Reload OpenCode",
+        text: "Reload OpenCode so the plugin loads.",
+      },
+      {
+        "@type": "HowToStep",
+        position: 3,
+        name: "Run /enhance",
+        text: "Type /enhance followed by a rough draft in the composer.",
+      },
+    ],
+  }
+
+  const article = {
+    "@type": "TechArticle",
+    "@id": `${canonical}#article`,
+    headline: page.heading,
+    description: page.description,
+    url: canonical,
+    mainEntityOfPage: { "@id": `${canonical}#webpage` },
+    author: { "@id": `${site.url}/#person` },
+    publisher: { "@id": `${site.url}/#person` },
+    datePublished: site.published,
+    dateModified: site.updated,
+    inLanguage: "en",
+    about: { "@id": `${site.url}/#app` },
+  }
+
   const nodes: Array<Record<string, unknown>> = [website, webPage, app, person]
   if (page.path === "/") nodes.push(poster, tutorial)
-  if (page.path === "/install/") nodes.push(faq)
+  if (page.path === "/install/") nodes.push(faq, howTo)
+  if (page.path === "/guide/") nodes.push(article)
   const crumb = breadcrumb(page)
   if (crumb) nodes.push(crumb)
 

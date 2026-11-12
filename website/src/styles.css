@@ -427,6 +427,56 @@ code {
   max-width: 34rem;
 }
 
+.guide-copy {
+  max-width: 68ch;
+}
+
+.guide-copy h2 {
+  max-width: 26ch;
+  margin-bottom: 1rem;
+}
+
+.guide-copy p {
+  color: var(--muted);
+}
+
+.guide-copy p + p {
+  margin-top: 0.9rem;
+}
+
+.guide-list {
+  margin: 1rem 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+
+.guide-list li + li {
+  margin-top: 0.5rem;
+}
+
+.guide-example {
+  margin: 1rem 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--ink);
+  background: var(--paper-deep);
+}
+
+.guide-example .mono-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--accent-ink);
+}
+
+.guide-example p {
+  max-width: 64ch;
+  margin: 0;
+}
+
+.guide-example code {
+  padding: 0;
+  background: transparent;
+}
+
 .not-found {
   max-width: 52ch;
   padding: clamp(4rem, 10vw, 8rem) 0;
