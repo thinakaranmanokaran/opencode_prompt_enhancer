@@ -124,6 +124,7 @@ function graphFor(page: PageSeo) {
     "@id": `${site.url}/#website`,
     url: `${site.url}/`,
     name: site.name,
+    alternateName: [site.shortName, "OpenCode Enhancer", "thinakaranmanokaran.github.io"],
     description: site.description,
     inLanguage: "en",
     publisher: { "@id": `${site.url}/#person` },
@@ -257,6 +258,7 @@ export function buildSeo(page: PageSeo, base: string): string {
     <title>${escapeHtml(page.title)}</title>
     <meta name="description" content="${escapeHtml(page.description)}" />
     <meta name="author" content="${escapeHtml(site.developer.name)}" />
+    <meta name="application-name" content="${escapeHtml(site.name)}" />
     <meta name="keywords" content="${escapeHtml(site.keywords.join(", "))}" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="color-scheme" content="light" />
@@ -264,8 +266,10 @@ export function buildSeo(page: PageSeo, base: string): string {
     <meta name="format-detection" content="telephone=no" />
     <link rel="canonical" href="${canonical}" />
     <link rel="alternate" hreflang="en" href="${canonical}" />
+    <link rel="icon" href="${base}favicon.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" type="image/x-icon" />
     <link rel="icon" href="${base}favicons/favicon32.png" sizes="32x32" type="image/png" />
-    <link rel="icon" href="${base}favicons/favicon16.png" sizes="16x16" type="image/png" />
+    <link rel="icon" href="${base}favicons/favicon96.png" sizes="96x96" type="image/png" />
+    <link rel="icon" href="${base}favicons/favicon192.png" sizes="192x192" type="image/png" />
     <link rel="icon" href="${base}logo.svg" sizes="any" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="${base}apple-touch-icon.png" />
     <link rel="manifest" href="${base}site.webmanifest" />
